@@ -1,0 +1,32 @@
+com/example/musicplayer1/SongsFragment.java
+ com.example.musicplayer1.SongsFragment
+com/example/musicplayer1/MainActivity.java
+ com.example.musicplayer1.MainActivity
+ com.example.musicplayer1.MainActivity$ViewPagerAdapter
+com/example/musicplayer1/MusicAdapter.java
+ com.example.musicplayer1.MusicAdapter
+ com.example.musicplayer1.MusicAdapter$1
+ com.example.musicplayer1.MusicAdapter$MyVieHolder
+com/example/musicplayer1/PlayerActivity.java
+ com.example.musicplayer1.PlayerActivity
+ com.example.musicplayer1.PlayerActivity$1
+ com.example.musicplayer1.PlayerActivity$10
+ com.example.musicplayer1.PlayerActivity$11
+ com.example.musicplayer1.PlayerActivity$12
+ com.example.musicplayer1.PlayerActivity$2
+ com.example.musicplayer1.PlayerActivity$3
+ com.example.musicplayer1.PlayerActivity$3$1
+ com.example.musicplayer1.PlayerActivity$4
+ com.example.musicplayer1.PlayerActivity$5
+ com.example.musicplayer1.PlayerActivity$6
+ com.example.musicplayer1.PlayerActivity$6$1
+ com.example.musicplayer1.PlayerActivity$7
+ com.example.musicplayer1.PlayerActivity$8
+ com.example.musicplayer1.PlayerActivity$9
+ com.example.musicplayer1.PlayerActivity$9$1
+com/example/musicplayer1/AlbumFragment.java
+ com.example.musicplayer1.AlbumFragment
+com/example/musicplayer1/BuildConfig.java
+ com.example.musicplayer1.BuildConfig
+com/example/musicplayer1/MusicFiles.java
+ com.example.musicplayer1.MusicFiles
