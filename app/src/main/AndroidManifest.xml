@@ -10,6 +10,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
+        android:name=".ApplicationClass"
         android:theme="@style/AppTheme">
         <activity android:name=".AlbumDetails"></activity>
         <activity android:name=".PlayerActivity" />
@@ -22,6 +23,13 @@
         </activity>
 
         <service android:name=".MusicService" android:enabled="true"/>
+        <receiver android:name=".NotificationReceiver" android:enabled="true">
+            <intent-filter>
+                <action android:name="actionprevious"/>
+                <action android:name="actionnext"/>
+                <action android:name="actionplay"/>
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

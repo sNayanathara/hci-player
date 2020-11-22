@@ -2,8 +2,12 @@ package com.example.musicplayer1;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.NotificationCompat;
 import androidx.palette.graphics.Palette;
 
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -19,7 +23,10 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.support.v4.media.session.MediaSessionCompat;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.ImageView;
@@ -35,6 +42,10 @@ import java.util.ArrayList;
 import java.util.Random;
 
 import static com.example.musicplayer1.AlbumDetailsAdapter.albumFiles;
+import static com.example.musicplayer1.ApplicationClass.ACTION_NEXT;
+import static com.example.musicplayer1.ApplicationClass.ACTION_PLAY;
+import static com.example.musicplayer1.ApplicationClass.ACTION_PREVIOUS;
+import static com.example.musicplayer1.ApplicationClass.CHANNEL_ID_2;
 import static com.example.musicplayer1.MainActivity.musicFiles;
 import static com.example.musicplayer1.MainActivity.repeatBoolean;
 import static com.example.musicplayer1.MainActivity.shuffleBoolean;
@@ -55,11 +66,12 @@ public class PlayerActivity extends AppCompatActivity implements ActionPlaying, 
     private Thread playThread, prevThread, nextThread;
     MusicService musicService;
 
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setFullScreen();
         setContentView(R.layout.activity_player);
+        getSupportActionBar().hide();
         initViews();
         getIntenMethod(); //playing the song
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -125,6 +137,12 @@ public class PlayerActivity extends AppCompatActivity implements ActionPlaying, 
         });
     }
 
+    private void setFullScreen() {
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN);
+    }
+
     @Override
     protected void onResume() {
         Intent intent = new Intent(this, MusicService.class);
@@ -163,6 +181,7 @@ public class PlayerActivity extends AppCompatActivity implements ActionPlaying, 
         if (musicService.isPlaying())
         {
             playPauseBtn.setImageResource(R.drawable.ic_baseline_play_arrow);
+            musicService.showNotification(R.drawable.ic_baseline_play_arrow);
             musicService.pause();
             seekBar.setMax(musicService.getDuration() / 1000);
             PlayerActivity.this.runOnUiThread(new Runnable() {    //time moves accordingly
@@ -179,6 +198,7 @@ public class PlayerActivity extends AppCompatActivity implements ActionPlaying, 
         }
         else
         {
+            musicService.showNotification(R.drawable.ic_baseline_pause);
             playPauseBtn.setImageResource(R.drawable.ic_baseline_pause);
             musicService.start();
             seekBar.setMax(musicService.getDuration() / 1000);
@@ -245,6 +265,7 @@ public class PlayerActivity extends AppCompatActivity implements ActionPlaying, 
                 }
             });
             musicService.OnCompleted();
+            musicService.showNotification(R.drawable.ic_baseline_pause);
             playPauseBtn.setBackgroundResource(R.drawable.ic_baseline_pause);
             musicService.start();
         }
@@ -279,6 +300,7 @@ public class PlayerActivity extends AppCompatActivity implements ActionPlaying, 
                 }
             });
             musicService.OnCompleted();
+            musicService.showNotification(R.drawable.ic_baseline_play_arrow);
             playPauseBtn.setBackgroundResource(R.drawable.ic_baseline_play_arrow);
         }
     }
@@ -337,6 +359,7 @@ public class PlayerActivity extends AppCompatActivity implements ActionPlaying, 
                 }
             });
             musicService.OnCompleted();
+            musicService.showNotification(R.drawable.ic_baseline_pause);
             playPauseBtn.setBackgroundResource(R.drawable.ic_baseline_pause);
             musicService.start();
         }
@@ -370,6 +393,7 @@ public class PlayerActivity extends AppCompatActivity implements ActionPlaying, 
                 }
             });
             musicService.OnCompleted();
+            musicService.showNotification(R.drawable.ic_baseline_play_arrow);
             playPauseBtn.setBackgroundResource(R.drawable.ic_baseline_play_arrow);
         }
     }
@@ -540,6 +564,7 @@ public class PlayerActivity extends AppCompatActivity implements ActionPlaying, 
     public void onServiceConnected(ComponentName name, IBinder service) {
         MusicService.MyBinder myBinder = (MusicService.MyBinder)service;
         musicService = myBinder.getService();
+        musicService.setCallBack(this);
         Toast.makeText(this, "Connected" + musicService,
                 Toast.LENGTH_SHORT).show();
         seekBar.setMax(musicService.getDuration() / 1000); //divide by 1000 to get as seconds
@@ -548,10 +573,12 @@ public class PlayerActivity extends AppCompatActivity implements ActionPlaying, 
         song_name.setText(listSongs.get(position).getTitle());
         artist_name.setText(listSongs.get(position).getArtist());
         musicService.OnCompleted();
+        musicService.showNotification(R.drawable.ic_baseline_pause);
     }
 
     @Override
     public void onServiceDisconnected(ComponentName name) {
         musicService = null;
     }
+
 }
