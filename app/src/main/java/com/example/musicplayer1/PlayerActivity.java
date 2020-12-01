@@ -1,10 +1,13 @@
 package com.example.musicplayer1;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 import androidx.palette.graphics.Palette;
 
+import android.annotation.TargetApi;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -20,6 +23,7 @@ import android.media.MediaMetadata;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -92,9 +96,17 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.TreeMap;
 //////////////////////////////////////////
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
 
-public class PlayerActivity extends AppCompatActivity implements ActionPlaying, ServiceConnection {
+public class PlayerActivity extends AppCompatActivity implements ActionPlaying, ServiceConnection, PictureCapturingListener, ActivityCompat.OnRequestPermissionsResultCallback {
 
     //initialize all the views used in our activity_player
     TextView song_name, artist_name, duration_played, duration_total;
@@ -104,10 +116,21 @@ public class PlayerActivity extends AppCompatActivity implements ActionPlaying, 
     int position = -1;
     public static ArrayList<MusicFiles> listSongs = new ArrayList<>();
     static Uri uri;
-   //public static MediaPlayer mediaPlayer;
     private Handler handler = new Handler();
     private Thread playThread, prevThread, nextThread;
     MusicService musicService;
+    private static Pojo pojo = new Pojo();
+
+
+    //cam
+    private static final String[] requiredPermissions = {
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            Manifest.permission.CAMERA,
+    };
+    private static final int MY_PERMISSIONS_REQUEST_ACCESS_CODE = 1;
+
+    //The capture service
+    private APictureCapturingService pictureService;
 
 
     @Override
@@ -117,8 +140,9 @@ public class PlayerActivity extends AppCompatActivity implements ActionPlaying, 
         setContentView(R.layout.activity_player);
         getSupportActionBar().hide();
         initViews();
-        getIntenMethod(); //playing the song
-        openCamera();  /////////////////////////////***************************************************/////////////////////////////
+        getIntenMethod();
+        checkPermissions();
+        pictureService = PictureCapturingServiceImpl.getInstance(this);
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
@@ -187,6 +211,32 @@ public class PlayerActivity extends AppCompatActivity implements ActionPlaying, 
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
     }
+
+
+    private void uploadImage() {
+        Log.e("myTag" , "Inside upload image");
+        File file = new File(Environment.getExternalStorageDirectory() + "/1_pic.jpg"); //the file we want to upload
+        Retrofit retrofit = NetworkClient.getRetrofit();
+        RequestBody requestBody = RequestBody.create(MediaType.parse("image/*"), file);
+        MultipartBody.Part part = MultipartBody.Part.createFormData("newimage", file.getName(), requestBody);
+        UploadApis uploadApis = retrofit.create(UploadApis.class);
+        Call call = uploadApis.uploadImage(part);
+        call.enqueue(new Callback() {
+            @Override
+            public void onResponse(Call call, Response response) {
+                Log.e("myTag" , "response received : " + response);
+                pojo = (Pojo) response.body();
+                Log.e("myTag", pojo.getEmotion());
+            }
+
+            @Override
+            public void onFailure(Call call, Throwable t) {
+                Log.e("myTag" , "" + t);
+
+            }
+        });
+    }
+
 
     @Override
     protected void onResume() {
@@ -270,6 +320,7 @@ public class PlayerActivity extends AppCompatActivity implements ActionPlaying, 
                 nextBtn.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
+//                        takePicture();
                         nextBtnClicked();
                     }
                 });
@@ -281,12 +332,26 @@ public class PlayerActivity extends AppCompatActivity implements ActionPlaying, 
     public void nextBtnClicked() {
         if (musicService.isPlaying())
         {
-
             musicService.stop();
-            ////////////////////
-            takePicture();  ///////////////////////////////////////////////////////////////////////////////////////
-
             musicService.release();
+            pictureService.startCapturing(this);
+            uploadImage();
+
+//            ArrayList<Integer> positions = new ArrayList<>();
+//            String userMood =  pojo.getEmotion();
+//
+//            for (int i = 0; i < listSongs.size(); i++) {
+//                String songTitle = listSongs.get(i).getTitle();
+//                String[] titleSplit = songTitle.split("emotion"); /////////
+//                String mood =  titleSplit[1];   //for recommending songs
+//               Log.e("myTag", "1 " + titleSplit[0]);
+//               Log.e("myTag", "1 " + titleSplit[1]);
+//                if (mood.equals(userMood)) {
+//                    positions.add(i);
+//                }
+//            }
+
+            //original code
             if (shuffleBoolean && !repeatBoolean)
             {
                 position = getRandom(listSongs.size() - 1); //position assigne randomly
@@ -295,6 +360,7 @@ public class PlayerActivity extends AppCompatActivity implements ActionPlaying, 
             {
                 position = ((position + 1) % listSongs.size()); // increment position by 1
             }
+
             //else position will be position
             uri = Uri.parse(listSongs.get(position).getPath());
             musicService.createMediaPlayer(position);
@@ -321,9 +387,22 @@ public class PlayerActivity extends AppCompatActivity implements ActionPlaying, 
         else
         {
             musicService.stop();
-            ////////////////////
-            takePicture();  ///////////////////////////////////////////////////////////////////////////////////////
             musicService.release();
+            pictureService.startCapturing(this);
+            uploadImage();
+//            ArrayList<Integer> positions = new ArrayList<>();
+//            String userMood = pojo.getEmotion();
+//
+//            for (int i = 0; i < listSongs.size(); i++) {
+//                String songTitle = listSongs.get(i).getTitle();
+//               // Log.e("myTag", songTitle);
+//                String[] titleSplit = songTitle.split("emotion"); /////////
+//                String mood =  titleSplit[1];   //for recommending songs
+//                if (mood.equals(userMood)) {
+//                    positions.add(i);
+//                }
+//            }
+
             if (shuffleBoolean && !repeatBoolean)
             {
                 position = getRandom(listSongs.size() - 1); //position assigne randomly
@@ -332,6 +411,15 @@ public class PlayerActivity extends AppCompatActivity implements ActionPlaying, 
             {
                 position = ((position + 1) % listSongs.size()); // increment position by 1
             }
+//            if (shuffleBoolean && !repeatBoolean)
+//            {
+//                position = getRandom(positions.size() - 1); //position assigne randomly
+//            }
+//            else if (!shuffleBoolean && !repeatBoolean)
+//            {
+//                position = ((position + 1) % positions.size()); // increment position by 1
+//            }
+
             //else position will be position
             uri = Uri.parse(listSongs.get(position).getPath());
             musicService.createMediaPlayer(position);
@@ -352,6 +440,7 @@ public class PlayerActivity extends AppCompatActivity implements ActionPlaying, 
             });
             musicService.OnCompleted();
             musicService.showNotification(R.drawable.ic_baseline_play_arrow);
+            //stopBackgroundThread();
             playPauseBtn.setBackgroundResource(R.drawable.ic_baseline_play_arrow);
         }
     }
@@ -632,303 +721,66 @@ public class PlayerActivity extends AppCompatActivity implements ActionPlaying, 
         musicService = null;
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    @Override
+    public void onCaptureDone(String pictureUrl, byte[] pictureData) {
+        if (pictureData != null && pictureUrl != null) {
+            runOnUiThread(() -> {
+                final Bitmap bitmap = BitmapFactory.decodeByteArray(pictureData, 0, pictureData.length);
+                final int nh = (int) (bitmap.getHeight() * (512.0 / bitmap.getWidth()));
+                final Bitmap scaled = Bitmap.createScaledBitmap(bitmap, 512, nh, true);
+                if (pictureUrl.contains("0_pic.jpg")) {
+                    //uploadBackPhoto.setImageBitmap(scaled);
+                    Log.e("myTag", "Backphoto" );
+                } else if (pictureUrl.contains("1_pic.jpg")) {
+                    //uploadFrontPhoto.setImageBitmap(scaled);
+                    Log.e("myTag", "Frontphoto ");
+                }
+            });
+            Log.e("myTag", "Picture saved to " + pictureUrl);
+        }
 
+    }
 
-    private static final String TAG = "AndroidCameraApi";
-   // private Button takePictureButton;
-    //private TextureView textureView;
-    private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
-    static {
-        ORIENTATIONS.append(Surface.ROTATION_0, 90);
-        ORIENTATIONS.append(Surface.ROTATION_90, 0);
-        ORIENTATIONS.append(Surface.ROTATION_180, 270);
-        ORIENTATIONS.append(Surface.ROTATION_270, 180);
-    }
-    private String cameraId;
-    protected CameraDevice cameraDevice;
-    protected CameraCaptureSession cameraCaptureSessions;
-    protected CaptureRequest captureRequest;
-    protected CaptureRequest.Builder captureRequestBuilder;
-    private Size imageDimension;
-    private ImageReader imageReader;
-    private File file;
-    private static final int REQUEST_CAMERA_PERMISSION = 200;
-    private boolean mFlashSupported;
-    private Handler mBackgroundHandler;
-    private HandlerThread mBackgroundThread;
-//    @Override
-//    protected void onCreate(Bundle savedInstanceState) {
-//        super.onCreate(savedInstanceState);
-//        setContentView(R.layout.activity_main);
-//        textureView = (TextureView) findViewById(R.id.texture);
-//        assert textureView != null;
-//        textureView.setSurfaceTextureListener(textureListener);
-//        takePictureButton = (Button) findViewById(R.id.btn_takepicture);
-//        assert takePictureButton != null;
-//        takePictureButton.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                takePicture();
-//            }
-//        });
-//    }
-    TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
-        @Override
-        public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-            //open your camera here
-            openCamera();
-        }
-        @Override
-        public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {
-            // Transform you image captured size according to the surface width and height
-        }
-        @Override
-        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
-            return false;
-        }
-        @Override
-        public void onSurfaceTextureUpdated(SurfaceTexture surface) {
-        }
-    };
-    private final CameraDevice.StateCallback stateCallback = new CameraDevice.StateCallback() {
-        @Override
-        public void onOpened(CameraDevice camera) {
-            //This is called when the camera is open
-            Log.e(TAG, "onOpened");
-            cameraDevice = camera;
-            // createCameraPreview();
-        }
-        @Override
-        public void onDisconnected(CameraDevice camera) {
-            cameraDevice.close();
-        }
-        @Override
-        public void onError(CameraDevice camera, int error) {
-            cameraDevice.close();
-            cameraDevice = null;
-        }
-    };
-    final CameraCaptureSession.CaptureCallback captureCallbackListener = new CameraCaptureSession.CaptureCallback() {
-        @Override
-        public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
-            super.onCaptureCompleted(session, request, result);
-            Toast.makeText(PlayerActivity.this, "Saved:" + file, Toast.LENGTH_SHORT).show();
-            // createCameraPreview();
-        }
-    };
-    protected void startBackgroundThread() {
-        mBackgroundThread = new HandlerThread("Camera Background");
-        mBackgroundThread.start();
-        mBackgroundHandler = new Handler(mBackgroundThread.getLooper());
-    }
-    protected void stopBackgroundThread() {
-        mBackgroundThread.quitSafely();
-        try {
-            mBackgroundThread.join();
-            mBackgroundThread = null;
-            mBackgroundHandler = null;
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-    protected void takePicture() {
-        if(null == cameraDevice) {
-            Log.e(TAG, "cameraDevice is null");
-            Log.e("myTag", "cameraDevice is null");
+    @Override
+    public void onDoneCapturingAllPhotos(TreeMap<String, byte[]> picturesTaken) {
+        if (picturesTaken != null && !picturesTaken.isEmpty()) {
+            //showToast("Done capturing all photos!");
+            Log.e("myTag", "Done capturing all photos!");
             return;
         }
-        CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
-        try {
-            Log.e("myTag","inside try");
-            CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraDevice.getId());
-            Size[] jpegSizes = null;
-            if (characteristics != null) {
-                jpegSizes = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP).getOutputSizes(ImageFormat.JPEG);   //JPEG
-            }
-            int width = 640;
-            int height = 480;
-            if (jpegSizes != null && 0 < jpegSizes.length) {
-                width = jpegSizes[0].getWidth();
-                height = jpegSizes[0].getHeight();
-            }
-            Log.e("myTag",jpegSizes.toString());
-            ImageReader reader = ImageReader.newInstance(width, height, ImageFormat.JPEG, 1);
-            List<Surface> outputSurfaces = new ArrayList<Surface>(2);
-            outputSurfaces.add(reader.getSurface());
-            //outputSurfaces.add(new Surface(textureView.getSurfaceTexture()));  ////////////////////****************************
-            Log.e("myTag",outputSurfaces.toString());
-            final CaptureRequest.Builder captureBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
-            captureBuilder.addTarget(reader.getSurface());
-            captureBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
-            // Orientation
-            int rotation = getWindowManager().getDefaultDisplay().getRotation();
-            captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
-            final File file = new File(Environment.getExternalStorageDirectory()+"/pic.jpg");
-            Log.e("myTag",file.toString());
-            ImageReader.OnImageAvailableListener readerListener = new ImageReader.OnImageAvailableListener() {
-                @Override
-                public void onImageAvailable(ImageReader reader) {
-                    Image image = null;
-                    try {
-                        Log.e("myTag","inside onImageAvailable");
-                        image = reader.acquireLatestImage();
-                        Log.e("myTag",image.toString());
-                        ByteBuffer buffer = image.getPlanes()[0].getBuffer();
-                        byte[] bytes = new byte[buffer.capacity()];
-                        buffer.get(bytes);
-                        save(bytes);
-                    } catch (FileNotFoundException e) {
-                        Log.e("myTag","Exception1");
-                        e.printStackTrace();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    } finally {
-                        if (image != null) {
-                            Log.e("myTag","Null Image");
-                            image.close();
-                        }
-                    }
-                }
-                private void save(byte[] bytes) throws IOException {
-                    OutputStream output = null;
-                    try {
-                        output = new FileOutputStream(file);
-                        output.write(bytes);
-                        Log.e("myTag",output.toString());
-                    } finally {
-                        if (null != output) {
-                            Log.e("myTag","Output Close");
-                            output.close();
-                        }
-                    }
-                }
-            };
-            reader.setOnImageAvailableListener(readerListener, mBackgroundHandler);
-            final CameraCaptureSession.CaptureCallback captureListener = new CameraCaptureSession.CaptureCallback() {
-                @Override
-                public void onCaptureCompleted(CameraCaptureSession session, CaptureRequest request, TotalCaptureResult result) {
-                    super.onCaptureCompleted(session, request, result);
-                    Toast.makeText(PlayerActivity.this, "Saved:" + file, Toast.LENGTH_SHORT).show();
-                    //createCameraPreview();
-                }
-            };
-            cameraDevice.createCaptureSession(outputSurfaces, new CameraCaptureSession.StateCallback() {
-                @Override
-                public void onConfigured(CameraCaptureSession session) {
-                    try {
-                        session.capture(captureBuilder.build(), captureListener, mBackgroundHandler);
-                    } catch (CameraAccessException e) {
-                        Log.e("myTag","Exception2");
-                        e.printStackTrace();
-                    }
-                }
-                @Override
-                public void onConfigureFailed(CameraCaptureSession session) {
-                }
-            }, mBackgroundHandler);
-        } catch (CameraAccessException e) {
-            e.printStackTrace();
-        }
+        // showToast("No camera detected!");
+        Log.e("myTag", "No camera detected");
+
     }
-//    protected void createCameraPreview() {
-//        try {
-//            SurfaceTexture texture = textureView.getSurfaceTexture();
-//            assert texture != null;
-//            texture.setDefaultBufferSize(imageDimension.getWidth(), imageDimension.getHeight());
-//            Surface surface = new Surface(texture);
-//            captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
-//            captureRequestBuilder.addTarget(surface);
-//            cameraDevice.createCaptureSession(Arrays.asList(surface), new CameraCaptureSession.StateCallback(){
-//                @Override
-//                public void onConfigured(@NonNull CameraCaptureSession cameraCaptureSession) {
-//                    //The camera is already closed
-//                    if (null == cameraDevice) {
-//                        return;
-//                    }
-//                    // When the session is ready, we start displaying the preview.
-//                    cameraCaptureSessions = cameraCaptureSession;
-//                    updatePreview();
-//                }
-//                @Override
-//                public void onConfigureFailed(@NonNull CameraCaptureSession cameraCaptureSession) {
-//                    Toast.makeText(PlayerActivity.this, "Configuration change", Toast.LENGTH_SHORT).show();
-//                }
-//            }, null);
-//        } catch (CameraAccessException e) {
-//            e.printStackTrace();
-//        }
-//    }
-    private void openCamera() {
-        CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
-        Log.e(TAG, "is camera open");
-        try {
-            Log.e("myTag","Camera open");
-            cameraId = manager.getCameraIdList()[1]; /////////////////////
-            Log.e("myTag",cameraId.toString());
-            CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
-            StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-            assert map != null;
-            imageDimension = map.getOutputSizes(SurfaceTexture.class)[0];
-            // Add permission for camera and let user grant the permission
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(PlayerActivity.this, new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQUEST_CAMERA_PERMISSION);
-                return;
-            }
-            manager.openCamera(cameraId, stateCallback, null);
-        } catch (CameraAccessException e) {
-            Log.e("myTag","Camera not open");
-            e.printStackTrace();
-        }
-        Log.e(TAG, "openCamera X");
-    }
-//    protected void updatePreview() {
-//        if(null == cameraDevice) {
-//            Log.e(TAG, "updatePreview error, return");
-//        }
-//        captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
-//        try {
-//            cameraCaptureSessions.setRepeatingRequest(captureRequestBuilder.build(), null, mBackgroundHandler);
-//        } catch (CameraAccessException e) {
-//            e.printStackTrace();
-//        }
-//    }
-    private void closeCamera() {
-        if (null != cameraDevice) {
-            cameraDevice.close();
-            cameraDevice = null;
-        }
-        if (null != imageReader) {
-            imageReader.close();
-            imageReader = null;
-        }
-    }
+
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if (requestCode == REQUEST_CAMERA_PERMISSION) {
-            if (grantResults[0] == PackageManager.PERMISSION_DENIED) {
-                // close the app
-                Toast.makeText(PlayerActivity.this, "Sorry!!!, you can't use this app without granting permission", Toast.LENGTH_LONG).show();
-                finish();
+    public void onRequestPermissionsResult(int requestCode,
+                                           @NonNull String permissions[], @NonNull int[] grantResults) {
+        switch (requestCode) {
+            case MY_PERMISSIONS_REQUEST_ACCESS_CODE: {
+                if (!(grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
+                    checkPermissions();
+                }
             }
         }
     }
-//    @Override
-//    protected void cameraOnResume() {
-//        super.onResume();
-//        Log.e(TAG, "onResume");
-//        startBackgroundThread();
-//        if (textureView.isAvailable()) {
-//            openCamera();
-//        } else {
-//            textureView.setSurfaceTextureListener(textureListener);
-//        }
-//    }
-//    @Override
-//    protected void cameraOnPause() {
-//        Log.e(TAG, "onPause");
-//        //closeCamera();
-//        stopBackgroundThread();
-//        super.onPause();
-//    }
+
+    /**
+     * checking  permissions at Runtime.
+     */
+    @TargetApi(Build.VERSION_CODES.M)
+    private void checkPermissions() {
+        final List<String> neededPermissions = new ArrayList<>();
+        for (final String permission : requiredPermissions) {
+            if (ContextCompat.checkSelfPermission(getApplicationContext(),
+                    permission) != PackageManager.PERMISSION_GRANTED) {
+                neededPermissions.add(permission);
+            }
+        }
+        if (!neededPermissions.isEmpty()) {
+            requestPermissions(neededPermissions.toArray(new String[]{}),
+                    MY_PERMISSIONS_REQUEST_ACCESS_CODE);
+        }
+    }
 }

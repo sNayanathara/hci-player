@@ -17,6 +17,9 @@ public class MusicFiles {
         this.id = id;
     }
 
+//    private String[] titleSplit = title.split("$$$"); /////////
+//    public String mood =  titleSplit[1];   //for recommending songs
+
     public MusicFiles() {
     }
 
