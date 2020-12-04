@@ -109,7 +109,7 @@ import retrofit2.Retrofit;
 public class PlayerActivity extends AppCompatActivity implements ActionPlaying, ServiceConnection, PictureCapturingListener, ActivityCompat.OnRequestPermissionsResultCallback {
 
     //initialize all the views used in our activity_player
-    TextView song_name, artist_name, duration_played, duration_total;
+    TextView user_mood, song_name, artist_name, duration_played, duration_total;
     ImageView cover_art, nextBtn, prevBtn, backBtn, shuffleBtn, repeatBtn;
     FloatingActionButton playPauseBtn;
     SeekBar seekBar;
@@ -365,6 +365,7 @@ public class PlayerActivity extends AppCompatActivity implements ActionPlaying, 
             uri = Uri.parse(listSongs.get(position).getPath());
             musicService.createMediaPlayer(position);
             metaData(uri);
+            user_mood.setText(pojo.getEmotion());
             song_name.setText(listSongs.get(position).getTitle());
             artist_name.setText(listSongs.get(position).getArtist());
             seekBar.setMax(musicService.getDuration() / 1000);
@@ -424,6 +425,7 @@ public class PlayerActivity extends AppCompatActivity implements ActionPlaying, 
             uri = Uri.parse(listSongs.get(position).getPath());
             musicService.createMediaPlayer(position);
             metaData(uri);
+            user_mood.setText(pojo.getEmotion());
             song_name.setText(listSongs.get(position).getTitle());
             artist_name.setText(listSongs.get(position).getArtist());
             seekBar.setMax(musicService.getDuration() / 1000);
@@ -484,6 +486,7 @@ public class PlayerActivity extends AppCompatActivity implements ActionPlaying, 
             uri = Uri.parse(listSongs.get(position).getPath());
             musicService.createMediaPlayer(position);
             metaData(uri);
+            user_mood.setText(pojo.getEmotion());
             song_name.setText(listSongs.get(position).getTitle());
             artist_name.setText(listSongs.get(position).getArtist());
             seekBar.setMax(musicService.getDuration() / 1000);
@@ -518,6 +521,7 @@ public class PlayerActivity extends AppCompatActivity implements ActionPlaying, 
             uri = Uri.parse(listSongs.get(position).getPath());
             musicService.createMediaPlayer(position);
             metaData(uri);
+            user_mood.setText(pojo.getEmotion());
             song_name.setText(listSongs.get(position).getTitle());
             artist_name.setText(listSongs.get(position).getArtist());
             seekBar.setMax(musicService.getDuration() / 1000);
@@ -579,6 +583,7 @@ public class PlayerActivity extends AppCompatActivity implements ActionPlaying, 
     }
 
     private void initViews() {
+        user_mood = findViewById(R.id.user_mood);
         song_name = findViewById(R.id.song_name);
         artist_name = findViewById(R.id.song_artist);
         duration_played = findViewById(R.id.durationPlayed);
@@ -710,6 +715,7 @@ public class PlayerActivity extends AppCompatActivity implements ActionPlaying, 
         seekBar.setMax(musicService.getDuration() / 1000); //divide by 1000 to get as seconds
         //since duration gives time in milliseconds
         metaData(uri);
+        user_mood.setText(pojo.getEmotion());
         song_name.setText(listSongs.get(position).getTitle());
         artist_name.setText(listSongs.get(position).getArtist());
         musicService.OnCompleted();

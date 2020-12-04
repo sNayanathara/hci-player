@@ -26,14 +26,15 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:id="@+id/user_mood"
             android:layout_centerVertical="true"
-            android:text="Now Playing"
+            android:text="Now Mood"
             android:textColor="@color/colorAccent"
             android:layout_toEndOf="@id/back_btn"
             android:layout_toStartOf="@id/menu_btn"
             android:gravity="center_horizontal"
             android:background="@android:color/transparent"
-            android:textSize="18sp"
+            android:textSize="35sp"
             android:textStyle="bold" />
 <!--        <TextureView-->
 <!--            android:id="@+id/texture"-->
