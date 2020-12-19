@@ -49,6 +49,7 @@ public class PictureCapturingServiceImpl extends APictureCapturingService {
 
     private CameraDevice cameraDevice;
     private ImageReader imageReader;
+
     /***
      * camera ids queue.
      */
@@ -56,7 +57,7 @@ public class PictureCapturingServiceImpl extends APictureCapturingService {
     //private String cameraId = String.valueOf(1);
 
 
-    private String currentCameraId;
+    private String currentCameraId = "1";
     private boolean cameraClosed;
     /**
      * stores a sorted map of (pictureUrlOnDisk, PictureData).
@@ -252,7 +253,6 @@ public class PictureCapturingServiceImpl extends APictureCapturingService {
                 , null);
     }
 
-
     private void saveImageToDisk(final byte[] bytes) {
         Log.e(TAG, "Image Saving");
         final String cameraId = this.cameraDevice == null ? UUID.randomUUID().toString() : this.cameraDevice.getId();
@@ -260,6 +260,7 @@ public class PictureCapturingServiceImpl extends APictureCapturingService {
         try (final OutputStream output = new FileOutputStream(file)) {
             output.write(bytes);
             this.picturesTaken.put(file.getPath(), bytes);
+
         } catch (final IOException e) {
             Log.e(TAG, "Exception occurred while saving picture to external storage ", e);
         }

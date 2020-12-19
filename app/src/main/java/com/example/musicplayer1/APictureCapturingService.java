@@ -41,6 +41,7 @@ public abstract class APictureCapturingService {
     }
 
 
+
     /**
      * starts pictures capturing process.
      *

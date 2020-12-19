@@ -6,7 +6,7 @@ android {
 
     defaultConfig {
         applicationId "com.example.musicplayer1"
-        minSdkVersion 19
+        minSdkVersion 22
         targetSdkVersion 30
         versionCode 1
         versionName "1.0"
@@ -44,6 +44,7 @@ dependencies {
     implementation 'com.squareup.retrofit2:retrofit:2.3.0'
     implementation 'com.squareup.retrofit2:converter-gson:2.3.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.11.0'
-
+    //microsoft
+    implementation 'com.microsoft.projectoxford:face:1.4.3'
 
 }
